@@ -2,6 +2,8 @@
 
 Neon Flap adalah interpretasi modern dari game klasik "Flappy Bird" dengan estetika cyberpunk/neon yang futuristik. Dibangun sepenuhnya menggunakan HTML5 Canvas dan JavaScript murni tanpa dependensi eksternal.
 
+![Gameplay Neon Flap](img-neon-flap.png)
+
 ## ✨ Fitur Utama
 
 - Tema Neon Modern: Visual bergaya cyberpunk dengan efek glow (cahaya) dan partikel.
