@@ -50,4 +50,5 @@ Game ini terdiri dari satu file tunggal (Single File HTML). Anda tidak perlu men
 Jika Anda ingin memodifikasi game, semua logika terdapat di dalam tag `<script>` pada file HTML.
 - Ubah variabel `this.settings` di dalam `class Game` untuk mengatur kecepatan atau gravitasi.
 - Ubah warna di fungsi `draw()` untuk mengganti tema warna neon.
+
 Dibuat dengan ❤️ dan sedikit kode JavaScript.
