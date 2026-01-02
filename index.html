@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <title>Neon Flap: Cyberpunk Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+            color: white;
+            touch-action: none;
+            /* Mencegah scroll pada mobile */
+            user-select: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- UI LAYER --- */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            /* Klik tembus ke canvas saat main */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        /* --- HUD (Score & Pause) --- */
+        .hud {
+            position: absolute;
+            top: 20px;
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: auto;
+        }
+
+        .score-display {
+            font-size: 32px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        .pause-btn {
+            background: rgba(0, 255, 255, 0.1);
+            border: 2px solid #0ff;
+            color: #0ff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- MENU BOXES --- */
+        .menu-box {
+            background: rgba(10, 10, 15, 0.9);
+            border: 2px solid #f0f;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.2), inset 0 0 20px rgba(255, 0, 255, 0.1);
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        h1 {
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #00f;
+            margin: 0 0 20px 0;
+            font-size: 36px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button.action-btn {
+            background: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 12px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Difficulty Colors */
+        .btn-easy {
+            border-color: #0f0 !important;
+            color: #0f0 !important;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        .btn-medium {
+            border-color: #ff0 !important;
+            color: #ff0 !important;
+            text-shadow: 0 0 5px #ff0;
+        }
+
+        .btn-hard {
+            border-color: #f00 !important;
+            color: #f00 !important;
+            text-shadow: 0 0 5px #f00;
+        }
+
+        button.action-btn:hover,
+        button.action-btn:active {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .highscore-txt {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        /* Hidden Classes */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Canvas Game Layer -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+
+        <!-- HUD (Score & Pause) -->
+        <div id="hud" class="hud hidden">
+            <div class="score-display">0</div>
+            <button id="pauseBtn" class="pause-btn">||</button>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="mainMenu" class="menu-box">
+            <h1>NEON FLAP</h1>
+            <p style="color: #ccc; margin-bottom: 20px;">Pilih Tingkat Kesulitan</p>
+            <div class="btn-group">
+                <button class="action-btn btn-easy" onclick="game.start('easy')">Easy</button>
+                <button class="action-btn btn-medium" onclick="game.start('medium')">Medium</button>
+                <button class="action-btn btn-hard" onclick="game.start('hard')">Hard</button>
+            </div>
+            <div class="highscore-txt">Highscore Tertinggi: <span id="menuHighscore">0</span></div>
+            <p class="copyright">Copyright &copy;
+                2026 Dibuat oleh NB ♡
+            </p>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pauseMenu" class="menu-box hidden">
+            <h1 style="color: #ff0; text-shadow: 0 0 10px #ff0;">PAUSED</h1>
+            <div class="btn-group">
+                <button class="action-btn" onclick="game.resume()">Resume</button>
+                <button class="action-btn" style="border-color: #f00; color:#f00;"
+                    onclick="game.resetToMenu()">Quit</button>
+            </div>
+        </div>
+
+        <!-- Game Over Menu -->
+        <div id="gameOverMenu" class="menu-box hidden">
+            <h1 style="color: #f00; text-shadow: 0 0 20px #f00;">CRASHED</h1>
+            <div style="font-size: 40px; margin-bottom: 10px; color: #fff;" id="finalScore">0</div>
+            <div style="font-size: 14px; margin-bottom: 20px; color: #aaa;">Best: <span id="finalHighscore">0</span>
+            </div>
+            <div class="btn-group">
+                <button class="action-btn" onclick="game.restart()">Try Again</button>
+                <button class="action-btn" onclick="game.resetToMenu()">Menu</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * AUDIO CONTROLLER
+         * Menggunakan Web Audio API untuk menghasilkan suara tanpa file eksternal
+         */
+        class SoundSynth {
+            constructor() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.enabled = true;
+            }
+
+            playJump() {
+                if (!this.enabled) return;
+                this.resumeCtx();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playScore() {
+                if (!this.enabled) return;
+                this.resumeCtx();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playCrash() {
+                if (!this.enabled) return;
+                this.resumeCtx();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            resumeCtx() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+        }
+
+        /**
+         * GAME ENGINE
+         */
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.audio = new SoundSynth();
+
+                // Game State
+                this.state = 'MENU'; // MENU, PLAYING, PAUSED, GAMEOVER
+                this.frames = 0;
+                this.score = 0;
+                this.highscore = parseInt(localStorage.getItem('neonFlapHighscore')) || 0;
+                this.difficulty = 'medium';
+
+                // Settings per difficulty
+                this.settings = {
+                    easy: { gap: 220, speed: 2.5, gravity: 0.20 },
+                    medium: { gap: 170, speed: 3.5, gravity: 0.25 },
+                    hard: { gap: 140, speed: 4.5, gravity: 0.35 }
+                };
+
+                this.currentSettings = this.settings.medium;
+
+                // Entities
+                this.bird = { x: 50, y: 150, w: 25, h: 25, velocity: 0, jump: 4.6, rotation: 0 };
+                this.pipes = [];
+                this.particles = [];
+
+                // UI Elements
+                this.ui = {
+                    menu: document.getElementById('mainMenu'),
+                    hud: document.getElementById('hud'),
+                    pauseMenu: document.getElementById('pauseMenu'),
+                    gameOver: document.getElementById('gameOverMenu'),
+                    scoreTxt: document.querySelector('.score-display'),
+                    finalScore: document.getElementById('finalScore'),
+                    finalHighscore: document.getElementById('finalHighscore'),
+                    menuHighscore: document.getElementById('menuHighscore')
+                };
+
+                this.ui.menuHighscore.textContent = this.highscore;
+
+                // Resize Handler
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                // Input Handler
+                this.setupInputs();
+
+                // Start Loop
+                this.loop = this.loop.bind(this);
+                requestAnimationFrame(this.loop);
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            setupInputs() {
+                // Keyboard
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' || e.code === 'ArrowUp') {
+                        this.actionJump();
+                    } else if (e.code === 'KeyP' || e.code === 'Escape') {
+                        this.togglePause();
+                    }
+                });
+
+                // Touch / Mouse (Canvas Only)
+                this.canvas.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.actionJump();
+                });
+
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); // prevent scroll
+                    this.actionJump();
+                }, { passive: false });
+
+                // UI Pause Button
+                document.getElementById('pauseBtn').addEventListener('click', (e) => {
+                    e.stopPropagation(); // prevent jump trigger
+                    this.togglePause();
+                });
+            }
+
+            start(diff) {
+                this.difficulty = diff;
+                this.currentSettings = this.settings[diff];
+                this.audio.resumeCtx(); // Init audio context on user interaction
+                this.resetGame();
+                this.state = 'PLAYING';
+                this.updateUI();
+            }
+
+            resetGame() {
+                this.bird.y = this.canvas.height / 2;
+                this.bird.velocity = 0;
+                this.bird.rotation = 0;
+                this.bird.x = this.canvas.width > 500 ? 100 : 50; // Responsive X pos
+                this.pipes = [];
+                this.particles = [];
+                this.score = 0;
+                this.frames = 0;
+                this.ui.scoreTxt.textContent = '0';
+            }
+
+            restart() {
+                this.resetGame();
+                this.state = 'PLAYING';
+                this.updateUI();
+            }
+
+            resetToMenu() {
+                this.state = 'MENU';
+                this.updateUI();
+            }
+
+            togglePause() {
+                if (this.state === 'PLAYING') {
+                    this.state = 'PAUSED';
+                } else if (this.state === 'PAUSED') {
+                    this.state = 'PLAYING';
+                }
+                this.updateUI();
+            }
+
+            resume() {
+                this.state = 'PLAYING';
+                this.updateUI();
+            }
+
+            actionJump() {
+                if (this.state !== 'PLAYING') return;
+                // PERBAIKAN: Gunakan this.bird.jump, bukan this.currentSettings.jump
+                this.bird.velocity = -this.bird.jump;
+                this.audio.playJump();
+                this.createParticles(this.bird.x, this.bird.y + this.bird.h, 5, '#0ff');
+            }
+
+            updateUI() {
+                // Hide all first
+                this.ui.menu.classList.add('hidden');
+                this.ui.hud.classList.add('hidden');
+                this.ui.pauseMenu.classList.add('hidden');
+                this.ui.gameOver.classList.add('hidden');
+
+                if (this.state === 'MENU') {
+                    this.ui.menu.classList.remove('hidden');
+                    this.ui.menuHighscore.textContent = this.highscore;
+                } else if (this.state === 'PLAYING') {
+                    this.ui.hud.classList.remove('hidden');
+                } else if (this.state === 'PAUSED') {
+                    this.ui.hud.classList.remove('hidden');
+                    this.ui.pauseMenu.classList.remove('hidden');
+                } else if (this.state === 'GAMEOVER') {
+                    this.ui.gameOver.classList.remove('hidden');
+                    this.ui.finalScore.textContent = this.score;
+                    this.ui.finalHighscore.textContent = this.highscore;
+                }
+            }
+
+            // --- GAME LOGIC ---
+
+            update() {
+                if (this.state === 'PAUSED' || this.state === 'MENU') return;
+
+                this.frames++;
+
+                // 1. PHYSICS UPDATE (Berjalan saat PLAYING & GAMEOVER sampai menyentuh tanah)
+                if (this.state === 'PLAYING' || this.state === 'GAMEOVER') {
+                    // Cek apakah sudah di tanah?
+                    if (this.bird.y + this.bird.h < this.canvas.height) {
+                        // Apply Gravity
+                        this.bird.velocity += this.currentSettings.gravity;
+                        this.bird.y += this.bird.velocity;
+
+                        // Rotation logic
+                        if (this.state === 'PLAYING') {
+                            this.bird.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (this.bird.velocity * 0.1)));
+                        } else {
+                            // Spin uncontrollable when crashing
+                            this.bird.rotation += 0.1;
+                        }
+
+                    } else {
+                        // Hit Ground (Floor)
+                        this.bird.y = this.canvas.height - this.bird.h;
+                        if (this.state === 'PLAYING') this.gameOver();
+                        this.bird.velocity = 0;
+                    }
+                }
+
+                // 2. PARTICLE UPDATE (Selalu berjalan agar efek ledakan terlihat)
+                for (let i = 0; i < this.particles.length; i++) {
+                    let part = this.particles[i];
+                    part.x -= this.currentSettings.speed * 0.5; // Partikel bergerak pelan
+                    part.x += part.vx;
+                    part.y += part.vy;
+                    part.life -= 0.02;
+                    if (part.life <= 0) {
+                        this.particles.splice(i, 1);
+                        i--;
+                    }
+                }
+
+                // 3. GAMEPLAY LOGIC (Hanya saat PLAYING)
+                if (this.state !== 'PLAYING') return;
+
+                // Ceiling Collision (Prevent sticking, trigger fall)
+                if (this.bird.y < 0) {
+                    this.bird.y = 0; // Clamp visual
+                    this.bird.velocity = 0;
+                    this.gameOver();
+                }
+
+                // Pipe Spawning
+                const spawnFrameRate = Math.floor(300 / this.currentSettings.speed);
+                if (this.frames % spawnFrameRate === 0) {
+                    const minHeight = 50;
+                    const maxPos = this.canvas.height - minHeight - this.currentSettings.gap;
+                    const topHeight = Math.floor(Math.random() * (maxPos - minHeight + 1) + minHeight);
+
+                    this.pipes.push({
+                        x: this.canvas.width,
+                        y: 0,
+                        w: 60, // Pipe Width
+                        h: topHeight, // Top Pipe Height
+                        gap: this.currentSettings.gap,
+                        passed: false
+                    });
+                }
+
+                // Pipe Logic
+                for (let i = 0; i < this.pipes.length; i++) {
+                    let p = this.pipes[i];
+                    p.x -= this.currentSettings.speed;
+
+                    // Collision Detection
+                    if (
+                        this.bird.x < p.x + p.w &&
+                        this.bird.x + this.bird.w > p.x &&
+                        (this.bird.y < p.h || this.bird.y + this.bird.h > p.h + p.gap)
+                    ) {
+                        this.gameOver();
+                    }
+
+                    // Score Logic
+                    if (p.x + p.w < this.bird.x && !p.passed) {
+                        this.score++;
+                        this.ui.scoreTxt.textContent = this.score;
+                        p.passed = true;
+                        this.audio.playScore();
+                        // Difficulty scaling
+                        if (this.score % 10 === 0 && this.currentSettings.speed < 8) {
+                            this.currentSettings.speed += 0.2;
+                        }
+                    }
+
+                    // Remove off-screen pipes
+                    if (p.x + p.w < 0) {
+                        this.pipes.shift();
+                        i--;
+                    }
+                }
+
+                // Add trail
+                if (this.frames % 5 === 0) {
+                    this.createParticles(this.bird.x, this.bird.y + 10, 1, '#f0f', true);
+                }
+            }
+
+            createParticles(x, y, count, color, isTrail = false) {
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: isTrail ? -2 : (Math.random() - 0.5) * 5,
+                        vy: isTrail ? (Math.random() - 0.5) * 2 : (Math.random() - 0.5) * 5,
+                        life: 1,
+                        color: color,
+                        size: isTrail ? 2 : Math.random() * 4 + 1
+                    });
+                }
+            }
+
+            gameOver() {
+                if (this.state === 'GAMEOVER') return; // Prevent double trigger
+
+                this.state = 'GAMEOVER';
+                this.audio.playCrash();
+                this.createParticles(this.bird.x, this.bird.y, 30, '#fff'); // Boom
+
+                if (this.score > this.highscore) {
+                    this.highscore = this.score;
+                    localStorage.setItem('neonFlapHighscore', this.highscore);
+                }
+                this.updateUI();
+            }
+
+            // --- DRAWING ---
+
+            draw() {
+                // Clear Canvas
+                this.ctx.fillStyle = '#050505';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw Background Grid (Moving)
+                this.drawGrid();
+
+                // Draw Pipes
+                // OPTIMIZATION: Matikan shadowBlur untuk pipa agar performa ringan
+                this.ctx.shadowBlur = 0;
+                this.ctx.lineWidth = 3;
+
+                for (let p of this.pipes) {
+                    this.ctx.strokeStyle = '#0f0';
+                    this.ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+
+                    // Top Pipe
+                    this.ctx.beginPath();
+                    if (this.ctx.roundRect) {
+                        this.ctx.roundRect(p.x, 0, p.w, p.h, [0, 0, 5, 5]);
+                    } else {
+                        this.ctx.rect(p.x, 0, p.w, p.h);
+                    }
+                    this.ctx.stroke();
+                    this.ctx.fill();
+
+                    // Bottom Pipe
+                    let bottomY = p.h + p.gap;
+                    let bottomH = this.canvas.height - bottomY;
+                    this.ctx.beginPath();
+                    if (this.ctx.roundRect) {
+                        this.ctx.roundRect(p.x, bottomY, p.w, bottomH, [5, 5, 0, 0]);
+                    } else {
+                        this.ctx.rect(p.x, bottomY, p.w, bottomH);
+                    }
+                    this.ctx.stroke();
+                    this.ctx.fill();
+                }
+
+                // Draw Particles
+                // OPTIMIZATION: Matikan shadowBlur untuk partikel
+                this.ctx.shadowBlur = 0;
+                for (let part of this.particles) {
+                    this.ctx.globalAlpha = part.life;
+                    this.ctx.fillStyle = part.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(part.x, part.y, part.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.globalAlpha = 1;
+                }
+
+                // Draw Bird
+                // Keep shadow for bird only (focal point)
+                this.ctx.save();
+                this.ctx.translate(this.bird.x + this.bird.w / 2, this.bird.y + this.bird.h / 2);
+                this.ctx.rotate(this.bird.rotation);
+
+                // Sedikit kurangi blur radius untuk optimasi
+                this.ctx.shadowBlur = 10;
+                this.ctx.shadowColor = '#f0f';
+                this.ctx.fillStyle = '#fff'; // White core
+                this.ctx.strokeStyle = '#f0f'; // Neon Pink edge
+                this.ctx.lineWidth = 2;
+
+                // Bird Shape (Cyber Box)
+                this.ctx.beginPath();
+                this.ctx.rect(-this.bird.w / 2, -this.bird.h / 2, this.bird.w, this.bird.h);
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                // Bird Eye
+                this.ctx.shadowBlur = 0; // Matikan shadow untuk mata
+                this.ctx.fillStyle = '#0ff';
+                this.ctx.beginPath();
+                this.ctx.rect(2, -8, 8, 4);
+                this.ctx.fill();
+
+                this.ctx.restore();
+            }
+
+            drawGrid() {
+                this.ctx.shadowBlur = 0;
+                this.ctx.strokeStyle = 'rgba(255, 0, 255, 0.1)';
+                this.ctx.lineWidth = 1;
+
+                // Stop grid movement on gameover
+                let speed = (this.state === 'PLAYING') ? this.currentSettings.speed : 0;
+                let offset = -(this.frames * (speed || 2)) % 50;
+
+                // If gameover, keep grid static at current offset based on freeze? 
+                // Simple version: just draw static grid or keep moving if we want trippy effect.
+                // Let's keep it moving only if playing, otherwise static feels dead (which is good for game over).
+                if (this.state !== 'PLAYING') offset = 0;
+
+                for (let x = offset; x < this.canvas.width; x += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvas.height);
+                    this.ctx.stroke();
+                }
+
+                // Horizontal horizon line
+                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, this.canvas.height - 50);
+                this.ctx.lineTo(this.canvas.width, this.canvas.height - 50);
+                this.ctx.stroke();
+            }
+
+            loop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(this.loop);
+            }
+        }
+
+        // Init Game
+        const game = new Game();
+
+    </script>
+</body>
+
+</html>
